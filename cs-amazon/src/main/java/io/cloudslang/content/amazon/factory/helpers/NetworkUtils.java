@@ -9,24 +9,15 @@
  *******************************************************************************/
 package io.cloudslang.content.amazon.factory.helpers;
 
+import io.cloudslang.content.amazon.entities.aws.Tenancy;
 import io.cloudslang.content.amazon.entities.inputs.InputsWrapper;
+import io.cloudslang.content.amazon.entities.validators.NetworkFilterValidator;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static io.cloudslang.content.amazon.utils.InputsUtil.getArrayWithoutDuplicateEntries;
-import static io.cloudslang.content.amazon.utils.InputsUtil.getQueryParamsSpecificString;
-import static io.cloudslang.content.amazon.utils.InputsUtil.getStringsList;
-import static io.cloudslang.content.amazon.utils.InputsUtil.getValidIPv4Address;
-import static io.cloudslang.content.amazon.utils.InputsUtil.setCommonQueryParamsMap;
-import static io.cloudslang.content.amazon.utils.InputsUtil.setOptionalMapEntry;
-import static io.cloudslang.content.amazon.utils.InputsUtil.setNetworkInterfaceSpecificQueryParams;
-
-import static org.apache.commons.lang3.ArrayUtils.isNotEmpty;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import static java.lang.String.valueOf;
 
 import static io.cloudslang.content.amazon.entities.constants.Constants.AwsParams.ALLOCATION_ID;
 import static io.cloudslang.content.amazon.entities.constants.Constants.AwsParams.CIDR_BLOCK;
@@ -45,10 +36,23 @@ import static io.cloudslang.content.amazon.entities.constants.Constants.AwsParam
 import static io.cloudslang.content.amazon.entities.constants.Constants.Miscellaneous.DOT;
 import static io.cloudslang.content.amazon.entities.constants.Constants.Miscellaneous.EMPTY;
 import static io.cloudslang.content.amazon.entities.constants.Constants.Miscellaneous.NETWORK;
+import static io.cloudslang.content.amazon.entities.constants.Constants.Miscellaneous.NOT_RELEVANT;
 import static io.cloudslang.content.amazon.entities.constants.Constants.Miscellaneous.PIPE_DELIMITER;
 import static io.cloudslang.content.amazon.entities.constants.Constants.Values.ONE;
 import static io.cloudslang.content.amazon.entities.constants.Constants.Values.START_INDEX;
 import static io.cloudslang.content.amazon.entities.constants.Inputs.ElasticIpInputs.PRIVATE_IP_ADDRESSES_STRING;
+import static io.cloudslang.content.amazon.factory.helpers.FilterUtils.getFiltersQueryMap;
+import static io.cloudslang.content.amazon.utils.InputsUtil.getArrayWithoutDuplicateEntries;
+import static io.cloudslang.content.amazon.utils.InputsUtil.getQueryParamsSpecificString;
+import static io.cloudslang.content.amazon.utils.InputsUtil.getStringsList;
+import static io.cloudslang.content.amazon.utils.InputsUtil.getValidIPv4Address;
+import static io.cloudslang.content.amazon.utils.InputsUtil.putCollectionInQueryMap;
+import static io.cloudslang.content.amazon.utils.InputsUtil.setCommonQueryParamsMap;
+import static io.cloudslang.content.amazon.utils.InputsUtil.setNetworkInterfaceSpecificQueryParams;
+import static io.cloudslang.content.amazon.utils.InputsUtil.setOptionalMapEntry;
+import static java.lang.String.valueOf;
+import static org.apache.commons.lang3.ArrayUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 /**
  * Created by Mihai Tusa.
@@ -56,16 +60,21 @@ import static io.cloudslang.content.amazon.entities.constants.Inputs.ElasticIpIn
  */
 public class NetworkUtils {
     private static final String ALLOW_REASSOCIATION = "AllowReassociation";
+    private static final String AMAZON_PROVIDED_IPV6_CIDR_BLOCK = "AmazonProvidedIpv6CidrBlock";
     private static final String ASSOCIATION_ID = "AssociationId";
     private static final String ASSOCIATE_PUBLIC_IP_ADDRESS = "AssociatePublicIpAddress";
     private static final String ATTACHMENT_ID = "AttachmentId";
     private static final String AVAILABILITY_ZONE = "AvailabilityZone";
+    private static final String HOST = "host";
+    private static final String INSTANCE_TENANCY = "InstanceTenancy";
     private static final String INVALID_NUMBER_OF_ARGUMENTS = "Invalid number of arguments for network inputs.";
     private static final String PRIVATE_IP_ADDRESSES = "PrivateIpAddresses";
     private static final String SECONDARY_PRIVATE_IP_ADDRESS_COUNT = "SecondaryPrivateIpAddressCount";
     private static final String SUBNET_ID = "SubnetId";
+    private static final String VPC_ID = "VpcId";
 
-    public Map<String, String> getAssociateAddressQueryParamsMap(InputsWrapper wrapper) {
+    @NotNull
+    public Map<String, String> getAssociateAddressQueryParamsMap(@NotNull InputsWrapper wrapper) {
         Map<String, String> queryParamsMap = new HashMap<>();
         setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
 
@@ -83,7 +92,8 @@ public class NetworkUtils {
         return queryParamsMap;
     }
 
-    public Map<String, String> getAttachNetworkInterfaceQueryParamsMap(InputsWrapper wrapper) {
+    @NotNull
+    public Map<String, String> getAttachNetworkInterfaceQueryParamsMap(@NotNull InputsWrapper wrapper) {
         Map<String, String> queryParamsMap = new HashMap<>();
         setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
         queryParamsMap.put(INSTANCE_ID, wrapper.getCustomInputs().getInstanceId());
@@ -93,7 +103,8 @@ public class NetworkUtils {
         return queryParamsMap;
     }
 
-    public Map<String, String> getCreateNetworkInterfaceQueryParamsMap(InputsWrapper wrapper) {
+    @NotNull
+    public Map<String, String> getCreateNetworkInterfaceQueryParamsMap(@NotNull InputsWrapper wrapper) {
         Map<String, String> queryParamsMap = new LinkedHashMap<>();
         setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
         queryParamsMap.put(SUBNET_ID, wrapper.getCustomInputs().getSubnetId());
@@ -116,7 +127,8 @@ public class NetworkUtils {
         return queryParamsMap;
     }
 
-    public Map<String, String> getCreateSubnetQueryParamsMap(InputsWrapper wrapper) {
+    @NotNull
+    public Map<String, String> getCreateSubnetQueryParamsMap(@NotNull InputsWrapper wrapper) {
         Map<String, String> queryParamsMap = new HashMap<>();
         setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
         queryParamsMap.put(CIDR_BLOCK, wrapper.getNetworkInputs().getCidrBlock());
@@ -127,7 +139,23 @@ public class NetworkUtils {
         return queryParamsMap;
     }
 
-    public Map<String, String> getDeleteNetworkInterfaceQueryParamsMap(InputsWrapper wrapper) {
+    @NotNull
+    public Map<String, String> getCreateVpcQueryParamsMap(@NotNull InputsWrapper wrapper) {
+        Map<String, String> queryParamsMap = new HashMap<>();
+        setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
+        queryParamsMap.put(CIDR_BLOCK, wrapper.getNetworkInputs().getCidrBlock());
+
+        setOptionalMapEntry(queryParamsMap, AMAZON_PROVIDED_IPV6_CIDR_BLOCK, valueOf(wrapper.getNetworkInputs().isAmazonProvidedIpv6CidrBlock()),
+                Boolean.TRUE == wrapper.getNetworkInputs().isAmazonProvidedIpv6CidrBlock());
+        setOptionalMapEntry(queryParamsMap, INSTANCE_TENANCY, Tenancy.DEFAULT.name().toLowerCase(), NOT_RELEVANT.equalsIgnoreCase(wrapper.getInstanceInputs().getTenancy()));
+        setOptionalMapEntry(queryParamsMap, INSTANCE_TENANCY, wrapper.getInstanceInputs().getTenancy(),
+                (!NOT_RELEVANT.equalsIgnoreCase(wrapper.getInstanceInputs().getTenancy()) && !HOST.equalsIgnoreCase(wrapper.getInstanceInputs().getTenancy())));
+
+        return queryParamsMap;
+    }
+
+    @NotNull
+    public Map<String, String> getDeleteNetworkInterfaceQueryParamsMap(@NotNull InputsWrapper wrapper) {
         Map<String, String> queryParamsMap = new HashMap<>();
         setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
         queryParamsMap.put(NETWORK_INTERFACE_ID, wrapper.getNetworkInputs().getNetworkInterfaceId());
@@ -135,7 +163,8 @@ public class NetworkUtils {
         return queryParamsMap;
     }
 
-    public Map<String, String> getDeleteSubnetQueryParamsMap(InputsWrapper wrapper) {
+    @NotNull
+    public Map<String, String> getDeleteSubnetQueryParamsMap(@NotNull InputsWrapper wrapper) {
         Map<String, String> queryParamsMap = new HashMap<>();
         setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
         queryParamsMap.put(SUBNET_ID, wrapper.getCustomInputs().getSubnetId());
@@ -143,7 +172,17 @@ public class NetworkUtils {
         return queryParamsMap;
     }
 
-    public Map<String, String> getDetachNetworkInterfaceQueryParamsMap(InputsWrapper wrapper) {
+    @NotNull
+    public Map<String, String> getDeleteVpcQueryParamsMap(@NotNull InputsWrapper wrapper) {
+        Map<String, String> queryParamsMap = new HashMap<>();
+        setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
+        queryParamsMap.put(VPC_ID, wrapper.getCustomInputs().getVpcId());
+
+        return queryParamsMap;
+    }
+
+    @NotNull
+    public Map<String, String> getDetachNetworkInterfaceQueryParamsMap(@NotNull InputsWrapper wrapper) {
         Map<String, String> queryParamsMap = new HashMap<>();
         setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
         queryParamsMap.put(ATTACHMENT_ID, wrapper.getCustomInputs().getAttachmentId());
@@ -152,13 +191,28 @@ public class NetworkUtils {
         return queryParamsMap;
     }
 
-    public Map<String, String> getDisassociateAddressQueryParamsMap(InputsWrapper wrapper) {
+    @NotNull
+    public Map<String, String> getDisassociateAddressQueryParamsMap(@NotNull InputsWrapper wrapper) {
         Map<String, String> queryParamsMap = new HashMap<>();
         setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
         setOptionalMapEntry(queryParamsMap, ASSOCIATION_ID, wrapper.getCustomInputs().getAssociationId(),
                 isNotBlank(wrapper.getCustomInputs().getAssociationId()));
         setOptionalMapEntry(queryParamsMap, PUBLIC_IP, wrapper.getElasticIpInputs().getPublicIp(),
                 isNotBlank(wrapper.getElasticIpInputs().getPublicIp()));
+
+        return queryParamsMap;
+    }
+
+    @NotNull
+    public Map<String, String> getDescribeNetworkInterfacesQueryParamsMap(@NotNull InputsWrapper wrapper) {
+        final Map<String, String> queryParamsMap = new LinkedHashMap<>();
+        setCommonQueryParamsMap(queryParamsMap, wrapper.getCommonInputs().getAction(), wrapper.getCommonInputs().getVersion());
+
+        final List<String> networkInterfaceIds = getStringsList(wrapper.getNetworkInputs().getNetworkInterfaceId(), wrapper.getCommonInputs().getDelimiter());
+        putCollectionInQueryMap(queryParamsMap, NETWORK_INTERFACE_ID, networkInterfaceIds);
+
+        final Map<String, String> filterQueryMap = getFiltersQueryMap(wrapper.getFilterInputs(), new NetworkFilterValidator());
+        queryParamsMap.putAll(filterQueryMap);
 
         return queryParamsMap;
     }
@@ -260,7 +314,7 @@ public class NetworkUtils {
     private void setPrivateIpAddressesQueryParams(Map<String, String> queryParamsMap, InputsWrapper wrapper, String specificArea, String delimiter) {
         if (isNotBlank(wrapper.getElasticIpInputs().getPrivateIpAddressesString())) {
             String[] privateIpAddressesArray = getArrayWithoutDuplicateEntries(wrapper.getElasticIpInputs().getPrivateIpAddressesString(),
-                            PRIVATE_IP_ADDRESSES_STRING, delimiter);
+                    PRIVATE_IP_ADDRESSES_STRING, delimiter);
 
             if (isNotEmpty(privateIpAddressesArray)) {
                 for (int index = START_INDEX; index < privateIpAddressesArray.length; index++) {
